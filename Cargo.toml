@@ -2,5 +2,14 @@
 name = "tad-conversion-tool"
 version = "0.1.0"
 edition = "2021"
+authors = ["MinBZK/ai-validation-team <ai-validatie@minbzk.nl>"]
+description = "A command line tool to convert files containing information about algorithmic systems to the TAD System Card. Currently supported input formats are 'algoritmeregister' and 'toetsingskader'"
 
 [dependencies]
+chrono = { version = "0.4.38", features = ["serde"] }
+clap = { version = "4.5.4", features = ["derive"] }
+csv = "1.3.0"
+derive = "1.0.0"
+features = "0.10.0"
+serde = { version = "1.0.200", features = ["derive"] }
+serde_yml = "0.0.5"
