@@ -5,6 +5,13 @@ edition = "2021"
 authors = ["MinBZK/ai-validation-team <ai-validatie@minbzk.nl>"]
 description = "A command line tool to convert files containing information about algorithmic systems to the TAD System Card. Currently supported input formats are 'algoritmeregister' and 'toetsingskader'"
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "tad-conversion-tool"
+
 [dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.4", features = ["derive"] }
