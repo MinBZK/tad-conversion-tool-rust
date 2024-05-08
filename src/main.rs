@@ -1,6 +1,5 @@
+use anyhow::Context;
 use clap::{Parser, ValueEnum};
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use tad_conversion_tool::algoritmeregister::AlgoritmeregisterRecord;
 use tad_conversion_tool::system_card::SystemCard;
@@ -15,41 +14,63 @@ enum InputFormat {
 #[command(version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
-    file: PathBuf,
+    path: PathBuf,
 
     #[arg(short, long)]
     #[clap(value_enum)]
     input_format: InputFormat,
-
-    #[arg(short, long)]
-    card_version: String,
 }
 
-fn convert_algoritmeregister(file: &impl AsRef<Path>, card_version: &str) {
-    let contents = File::open(file).expect("could not read file");
-    let mut reader = csv::Reader::from_reader(contents);
+fn convert_algoritmeregister(
+    in_path: impl AsRef<Path>,
+    out_dir: impl AsRef<Path>,
+) -> anyhow::Result<()> {
+    let algreg_records =
+        AlgoritmeregisterRecord::load_from_csv(in_path).context("Could not load from csv file.")?;
 
-    for result in reader.deserialize() {
-        let record: AlgoritmeregisterRecord = result.expect("could not read result");
-        println!("{:?}", record);
+    // For now only consider version 1.0.0 of algoritmeregister.
+    let version = "1.0.0".to_string();
+    let algreg_records: Vec<AlgoritmeregisterRecord> = algreg_records
+        .into_iter()
+        .filter(|record| record.standard_version.as_ref() == Some(&version))
+        .collect();
+
+    for record in algreg_records {
+        let system_card = SystemCard::from_algoritmeregister_record(&record);
+        let filename = format!(
+            "{}_{}.yaml",
+            record
+                .name
+                .unwrap()
+                .to_lowercase()
+                .replace(" ", "_")
+                .replace("/", "")
+                .replace(":", ""),
+            record
+                .organization
+                .unwrap()
+                .to_lowercase()
+                .replace(" ", "_")
+        );
+        let savepath = out_dir.as_ref().join(filename);
+        println!("{:?}", savepath);
+        system_card.save(savepath)?;
     }
 
-    let system_card = SystemCard::new();
-    let output = serde_yml::to_string(&system_card).expect("could not write to yaml");
-    let mut file = File::create("system_card.yaml").expect("could not create file");
-    file.write_all(&output.as_bytes())
-        .expect("could not write to file");
+    Ok(())
 }
 
-fn convert_toetsingskader(file: &impl AsRef<Path>, card_version: &str) {
+fn convert_toetsingskader(in_path: impl AsRef<Path>, out_path: impl AsRef<Path>) {
     unimplemented!()
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.input_format {
-        InputFormat::Algoritmeregister => convert_algoritmeregister(&args.file, &args.card_version),
-        InputFormat::Toetsingskader => convert_toetsingskader(&args.file, &args.card_version),
+        InputFormat::Algoritmeregister => convert_algoritmeregister(&args.path, "out/")?,
+        InputFormat::Toetsingskader => convert_toetsingskader(&args.path, "out/"),
     }
+
+    Ok(())
 }
