@@ -1,5 +1,6 @@
 use anyhow::Context;
 use clap::{Parser, ValueEnum};
+use std::fs;
 use std::path::{Path, PathBuf};
 use tad_conversion_tool::algoritmeregister::AlgoritmeregisterRecord;
 use tad_conversion_tool::system_card::SystemCard;
@@ -19,28 +20,33 @@ struct Args {
     #[arg(short, long)]
     #[clap(value_enum)]
     input_format: InputFormat,
+
+    #[arg(short, long, default_value = "out/")]
+    output_dir: PathBuf,
 }
 
 fn convert_algoritmeregister(
     in_path: impl AsRef<Path>,
     out_dir: impl AsRef<Path>,
 ) -> anyhow::Result<()> {
-    let algreg_records =
+    let input_records =
         AlgoritmeregisterRecord::load_from_csv(in_path).context("Could not load from csv file.")?;
 
     // For now only consider version 1.0.0 of algoritmeregister.
-    let version = "1.0.0".to_string();
-    let algreg_records: Vec<AlgoritmeregisterRecord> = algreg_records
+    let input_records: Vec<AlgoritmeregisterRecord> = input_records
         .into_iter()
-        .filter(|record| record.standard_version.as_ref() == Some(&version))
+        .filter(|record| record.standard_version.as_deref() == Some("1.0.0"))
         .collect();
 
-    for record in algreg_records {
-        let system_card = SystemCard::from_algoritmeregister_record(&record);
+    fs::create_dir_all(&out_dir).context("Could not create output directory")?;
+
+    for record in input_records {
+        let system_card = SystemCard::from(&record);
         let filename = format!(
             "{}_{}.yaml",
             record
                 .name
+                // We know each entry in algoritmeregister has a name, so we can unwrap.
                 .unwrap()
                 .to_lowercase()
                 .replace(" ", "_")
@@ -48,28 +54,24 @@ fn convert_algoritmeregister(
                 .replace(":", ""),
             record
                 .organization
+                // We know each entry in algoritmeregister has an organization, so we can unwrap.
                 .unwrap()
                 .to_lowercase()
                 .replace(" ", "_")
         );
         let savepath = out_dir.as_ref().join(filename);
-        println!("{:?}", savepath);
         system_card.save(savepath)?;
     }
 
     Ok(())
 }
 
-fn convert_toetsingskader(in_path: impl AsRef<Path>, out_path: impl AsRef<Path>) {
-    unimplemented!()
-}
-
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.input_format {
-        InputFormat::Algoritmeregister => convert_algoritmeregister(&args.path, "out/")?,
-        InputFormat::Toetsingskader => convert_toetsingskader(&args.path, "out/"),
+        InputFormat::Algoritmeregister => convert_algoritmeregister(&args.path, &args.output_dir)?,
+        InputFormat::Toetsingskader => unimplemented!(),
     }
 
     Ok(())

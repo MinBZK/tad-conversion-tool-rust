@@ -847,6 +847,8 @@ dependencies = [
  "csv",
  "derive",
  "features",
+ "log",
+ "once_cell",
  "regex",
  "serde",
  "serde_yml",
